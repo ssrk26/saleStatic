@@ -1,0 +1,28 @@
+{
+  "name": "teeto-labels",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Teeto Labels - Dynamic Apparel Shopping Cart with WhatsApp Checkout & Admin/Superadmin Portal",
+  "type": "module",
+  "scripts": {
+    "dev:server": "node server/index.js",
+    "dev:client": "vite",
+    "dev": "node start-dev.js",
+    "export-data": "node scripts/export-static-data.js",
+    "build": "node scripts/export-static-data.js && vite build",
+    "test:ci": "node scripts/verify-ci.js",
+    "start": "NODE_ENV=production node server/index.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.1",
+    "lucide-react": "^0.454.0",
+    "multer": "^1.4.5-lts.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.3",
+    "vite": "^5.4.10"
+  }
+}

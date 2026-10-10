@@ -1,0 +1,100 @@
+name: Deploy Teeto Labels
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+# Grant permissions for GitHub Pages deployment & Container Registry
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+  packages: write
+
+# Allow one concurrent deployment at a time
+concurrency:
+  group: 'teeto-labels-deploy-${{ github.ref }}'
+  cancel-in-progress: false
+
+jobs:
+  # ==========================================================================
+  # JOB 1: Build React Frontend, Export JSON Catalog & Verify Node.js Store
+  # ==========================================================================
+  build-and-test:
+    name: Build & Verify Application
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci || npm install
+
+      - name: Build Production Bundle & Export Store JSON
+        run: npm run build
+
+      - name: Run CI Verification Suite
+        run: npm run test:ci
+
+      - name: Configure GitHub Pages
+        if: github.event_name != 'pull_request'
+        uses: actions/configure-pages@v5
+
+      - name: Upload Production Artifact for GitHub Pages
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './dist'
+
+  # ==========================================================================
+  # JOB 2: Zero-Cost Deployment to GitHub Pages
+  # ==========================================================================
+  deploy-github-pages:
+    name: Deploy Storefront to GitHub Pages
+    needs: build-and-test
+    if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  # ==========================================================================
+  # JOB 3: Full-Stack Node.js Server Webhook Deploy (Render / Railway / VPS)
+  # ==========================================================================
+  deploy-fullstack-webhook:
+    name: Trigger Full-Stack Node.js Server Deploy
+    needs: build-and-test
+    if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Trigger Deploy Webhook (if DEPLOY_WEBHOOK_URL secret is set)
+        env:
+          DEPLOY_WEBHOOK_URL: ${{ secrets.DEPLOY_WEBHOOK_URL }}
+        run: |
+          if [ -n "$DEPLOY_WEBHOOK_URL" ]; then
+            echo "Triggering full-stack Node.js server deployment via webhook..."
+            curl -fsSL -X POST "$DEPLOY_WEBHOOK_URL"
+            echo "Full-stack deployment triggered successfully!"
+          else
+            echo "No DEPLOY_WEBHOOK_URL secret configured — skipping external webhook trigger."
+          fi
