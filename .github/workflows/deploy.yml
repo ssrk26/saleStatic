@@ -11,6 +11,8 @@ on:
 # Grant contents:write permission so the action can push the built dist to the gh-pages branch
 permissions:
   contents: write
+  pages: write
+  id-token: write
 
 # Allow only one concurrent deployment
 concurrency:
