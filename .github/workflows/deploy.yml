@@ -43,9 +43,6 @@ jobs:
       - name: Verify CI checks
         run: npm run test:ci
 
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
-
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
