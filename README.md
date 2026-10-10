@@ -6,7 +6,7 @@
 
 ## Quick Start
 
-```bash
+```bash 
 # 1. Start the unified Production Server (serves both React UI + API on port 4000)
 npm start
 # Open http://localhost:4000
