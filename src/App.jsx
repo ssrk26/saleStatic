@@ -19,14 +19,15 @@ import ProductModal from './components/ProductModal';
 import CartDrawer from './components/CartDrawer';
 import AdminPortal from './components/AdminPortal';
 import { buildSingleProductWhatsAppUrl, sanitizePhone } from './utils/whatsapp';
+import initialCatalogData from '../public/store-data.json';
 
 export default function App() {
   const [storeData, setStoreData] = useState({
-    config: {},
-    categories: [],
-    products: []
+    config: initialCatalogData?.config || {},
+    categories: initialCatalogData?.categories || [],
+    products: initialCatalogData?.products || []
   });
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [viewMode, setViewMode] = useState('store'); // 'store' | 'admin'
 
   // Filtering & Search state
@@ -55,46 +56,50 @@ export default function App() {
   const [quickAddedId, setQuickAddedId] = useState(null);
 
   const fetchStoreData = async () => {
-    try {
-      const isStaticHost = typeof window !== 'undefined' && window.location.hostname.includes('github.io');
-      const apiUrl = import.meta.env.VITE_API_URL;
+    const apiUrl = import.meta.env.VITE_API_URL;
+    const isStaticHost = typeof window !== 'undefined' && window.location.hostname.includes('github.io');
 
-      // If running on GitHub Pages without a dedicated backend, load the exported static store data directly
-      if (isStaticHost && !apiUrl) {
-        const staticRes = await fetch('./store-data.json');
-        if (!staticRes.ok) throw new Error('Failed to load static store-data.json');
+    // If an external backend is configured OR running in local dev with server, call the API
+    if (apiUrl || !isStaticHost) {
+      try {
+        const endpoint = apiUrl ? `${apiUrl.replace(/\/$/, '')}/api/store` : '/api/store';
+        const res = await fetch(endpoint);
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.products) {
+            setStoreData({
+              config: data.config || {},
+              categories: data.categories || [],
+              products: data.products || []
+            });
+            return;
+          }
+        }
+      } catch (err) {
+        console.warn('Backend API unavailable, using static catalog:', err.message);
+      }
+    }
+
+    // Otherwise (or if API is down), fetch the latest static store-data.json
+    try {
+      let staticUrl = './store-data.json';
+      if (typeof window !== 'undefined') {
+        const basePath = window.location.pathname.endsWith('/')
+          ? window.location.pathname
+          : `${window.location.pathname}/`;
+        staticUrl = `${window.location.origin}${basePath}store-data.json`;
+      }
+      const staticRes = await fetch(staticUrl);
+      if (staticRes.ok) {
         const staticData = await staticRes.json();
         setStoreData({
           config: staticData.config || {},
           categories: staticData.categories || [],
           products: staticData.products || []
         });
-        return;
       }
-
-      const endpoint = apiUrl ? `${apiUrl.replace(/\/$/, '')}/api/store` : '/api/store';
-      const res = await fetch(endpoint);
-      if (!res.ok) throw new Error('API unavailable, trying static store-data.json');
-      const data = await res.json();
-      setStoreData({
-        config: data.config || {},
-        categories: data.categories || [],
-        products: data.products || []
-      });
     } catch {
-      try {
-        const fallbackRes = await fetch('./store-data.json');
-        const fallbackData = await fallbackRes.json();
-        setStoreData({
-          config: fallbackData.config || {},
-          categories: fallbackData.categories || [],
-          products: fallbackData.products || []
-        });
-      } catch (err) {
-        console.error('Failed to load store data:', err);
-      }
-    } finally {
-      setLoading(false);
+      // Bundled initialCatalogData is already in state
     }
   };
 
