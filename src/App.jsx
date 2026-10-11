@@ -56,7 +56,24 @@ export default function App() {
 
   const fetchStoreData = async () => {
     try {
-      const res = await fetch('/api/store');
+      const isStaticHost = typeof window !== 'undefined' && window.location.hostname.includes('github.io');
+      const apiUrl = import.meta.env.VITE_API_URL;
+
+      // If running on GitHub Pages without a dedicated backend, load the exported static store data directly
+      if (isStaticHost && !apiUrl) {
+        const staticRes = await fetch('./store-data.json');
+        if (!staticRes.ok) throw new Error('Failed to load static store-data.json');
+        const staticData = await staticRes.json();
+        setStoreData({
+          config: staticData.config || {},
+          categories: staticData.categories || [],
+          products: staticData.products || []
+        });
+        return;
+      }
+
+      const endpoint = apiUrl ? `${apiUrl.replace(/\/$/, '')}/api/store` : '/api/store';
+      const res = await fetch(endpoint);
       if (!res.ok) throw new Error('API unavailable, trying static store-data.json');
       const data = await res.json();
       setStoreData({

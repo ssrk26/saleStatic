@@ -87,21 +87,25 @@ export default function CartDrawer({
     const whatsappUrl = buildWhatsAppUrl(config?.whatsappNumber, messageText);
 
     try {
-      await fetch('/api/orders/whatsapp-log', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          customerName,
-          customerPhone,
-          customerAddress,
-          notes,
-          items: cartItems,
-          subtotal,
-          shipping,
-          total,
-          whatsappUrl
-        })
-      });
+      const apiUrl = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+      const isStaticHost = typeof window !== 'undefined' && window.location.hostname.includes('github.io');
+      if (apiUrl || !isStaticHost) {
+        await fetch(apiUrl ? `${apiUrl}/api/orders/whatsapp-log` : '/api/orders/whatsapp-log', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            customerName,
+            customerPhone,
+            customerAddress,
+            notes,
+            items: cartItems,
+            subtotal,
+            shipping,
+            total,
+            whatsappUrl
+          })
+        });
+      }
     } catch {
       // Proceed to open WhatsApp even if offline log fails
     } finally {

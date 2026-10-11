@@ -102,14 +102,22 @@ export default function AdminPortal({
     setConfigForm(storeData.config || {});
   }, [storeData.config]);
 
+  const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+  const resolveApiUrl = (endpoint) => (API_BASE ? `${API_BASE}${endpoint}` : endpoint);
+
   useEffect(() => {
     if (!token) {
       setCurrentUser(null);
       setAuthLoading(false);
       return;
     }
+    const isStaticHost = typeof window !== 'undefined' && window.location.hostname.includes('github.io');
+    if (isStaticHost && !API_BASE) {
+      setAuthLoading(false);
+      return;
+    }
     setAuthLoading(true);
-    fetch('/api/auth/me', {
+    fetch(resolveApiUrl('/api/auth/me'), {
       headers: { Authorization: `Bearer ${token}` }
     })
       .then((res) => {
@@ -139,7 +147,7 @@ export default function AdminPortal({
   }, [activeTab, currentUser, token]);
 
   const apiFetch = async (url, options = {}) => {
-    const res = await fetch(url, {
+    const res = await fetch(resolveApiUrl(url), {
       ...options,
       headers: {
         'Content-Type': 'application/json',
@@ -157,8 +165,13 @@ export default function AdminPortal({
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoginError('');
+    const isStaticHost = typeof window !== 'undefined' && window.location.hostname.includes('github.io');
+    if (isStaticHost && !API_BASE) {
+      setLoginError('GitHub Pages is static-only and cannot run the Express backend server. To use the Admin Portal, run locally (npm run dev) or deploy server/index.js (e.g. on Render/Railway) and configure VITE_API_URL.');
+      return;
+    }
     try {
-      const res = await fetch('/api/auth/login', {
+      const res = await fetch(resolveApiUrl('/api/auth/login'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: loginUsername, password: loginPassword })
@@ -319,7 +332,7 @@ export default function AdminPortal({
     try {
       const formData = new FormData();
       files.forEach((f) => formData.append('files', f));
-      const res = await fetch('/api/admin/upload', {
+      const res = await fetch(resolveApiUrl('/api/admin/upload'), {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
         body: formData
